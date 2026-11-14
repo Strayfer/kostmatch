@@ -165,7 +165,7 @@ copy .env.example .env.local
 npm run dev
 ```
 
-Buka **[http://localhost:3000](http://localhost:3000)** di browser. 🎉
+Buka **[http://localhost:3000](http://localhost:3000)** di browser. 
 
 ### Build Produksi (opsional)
 
