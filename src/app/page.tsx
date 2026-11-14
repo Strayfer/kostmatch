@@ -1,10 +1,8 @@
 "use client";
-
 /**
  * Perilaku model AI (system prompt, model, RAG, guardrail) tetap diatur di route.tsx.
  * page.tsx ini memperbaiki UX AI: prompt terstruktur, saran pertanyaan, retry, dan konteks kriteria.
  */
-
 import {
   useState,
   useRef,
@@ -59,7 +57,6 @@ import {
 import { dorms, type Dorm } from "@/data";
 
 /* ============================== TYPES ============================== */
-
 type Message = { role: "user" | "assistant"; content: string; error?: boolean };
 type ToastItem = { id: number; text: string; actionLabel?: string; onAction?: () => void };
 type SortKey = "rating" | "priceAsc" | "distance";
@@ -67,7 +64,6 @@ type DrawerKind = "concierge" | "saved" | "a11y" | null;
 type ThemeMode = "light" | "dark" | "system";
 type CollectionType = "best" | "cheapest" | "closest";
 type IconType = ComponentType<{ size?: number | string; className?: string }>;
-
 type BrowseFilters = {
   budget: number;
   gender: string;
@@ -76,7 +72,6 @@ type BrowseFilters = {
   ac: boolean;
   electricity: string;
 };
-
 type A11yPrefs = {
   theme: ThemeMode;
   highContrast: boolean;
@@ -85,7 +80,6 @@ type A11yPrefs = {
   boldFocus: boolean;
   reduceTransparency: boolean;
 };
-
 const DEFAULT_A11Y: A11yPrefs = {
   theme: "system",
   highContrast: false,
@@ -96,13 +90,11 @@ const DEFAULT_A11Y: A11yPrefs = {
 };
 
 /* ============================== THEME + CSS ============================== */
-
 const CSS = `
 @import url('https://cdn.jsdelivr.net/npm/@fontsource-variable/fraunces@5/index.css');
 @import url('https://cdn.jsdelivr.net/npm/@fontsource-variable/fraunces@5/wght-italic.css');
 @import url('https://cdn.jsdelivr.net/npm/@fontsource-variable/plus-jakarta-sans@5/index.css');
 @import url('https://cdn.jsdelivr.net/npm/@fontsource-variable/lexend@5/index.css');
-
 .km-app {
   --km-nav-h: 3.5rem;
   --km-paper: #F4F0E6;
@@ -150,7 +142,6 @@ const CSS = `
   color: var(--km-ink);
 }
 @media (min-width: 640px) { .km-app { --km-nav-h: 4rem; } }
-
 .km-app.km-dark {
   --km-paper: #0E1411;
   --km-surface: #151C18;
@@ -190,7 +181,6 @@ const CSS = `
     radial-gradient(720px 380px at 8% -22%, rgba(87, 177, 138, 0.12), transparent);
   --km-kawung: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72'%3E%3Cg fill='none' stroke='%23E9EFE7' stroke-opacity='0.05'%3E%3Ccircle cx='0' cy='0' r='16'/%3E%3Ccircle cx='72' cy='0' r='16'/%3E%3Ccircle cx='0' cy='72' r='16'/%3E%3Ccircle cx='72' cy='72' r='16'/%3E%3Ccircle cx='36' cy='36' r='16'/%3E%3Ccircle cx='36' cy='36' r='5'/%3E%3C/g%3E%3C/svg%3E");
 }
-
 .km-app.km-hc {
   --km-paper: #FFFFFF; --km-surface: #FFFFFF; --km-surface-alt: #FFFFFF;
   --km-ink: #000000; --km-ink-soft: #000000; --km-ink-faint: #1A1A1A;
@@ -220,7 +210,6 @@ const CSS = `
   --km-overlay: rgba(0,0,0,0.9); --km-nav-bg: #000000; --km-disabled-overlay: rgba(0,0,0,0.85);
   --km-focus: #FFD400; --km-focus-ring: rgba(255,212,0,0.3);
 }
-
 .km-app.km-readable { font-family: "Lexend Variable", "Lexend", ui-sans-serif, system-ui, sans-serif; letter-spacing: 0.01em; line-height: 1.6; }
 .km-app.km-readable .km-display { font-family: "Lexend Variable", "Lexend", ui-sans-serif, system-ui, sans-serif; font-style: normal; letter-spacing: 0; }
 .km-app.km-readable em { font-style: normal; }
@@ -228,13 +217,11 @@ const CSS = `
 .km-app.km-bold-focus :focus-visible { outline: 3px solid var(--km-focus) !important; outline-offset: 3px !important; }
 .km-app.km-reduce-transparency { --km-nav-bg: var(--km-paper); --km-overlay: rgba(0,0,0,0.88); }
 .km-app.km-reduce-transparency * { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
-
 html { scrollbar-width: thin; scrollbar-color: var(--km-line-strong) var(--km-paper); }
 html::-webkit-scrollbar { width: 10px; height: 10px; }
 html::-webkit-scrollbar-track { background: var(--km-paper); }
 html::-webkit-scrollbar-thumb { background: var(--km-line-strong); border-radius: 8px; border: 2px solid var(--km-paper); }
 html::-webkit-scrollbar-thumb:hover { background: var(--km-brand-mid); }
-
 .km-display { font-family: "Fraunces Variable", "Fraunces", Georgia, "Times New Roman", serif; font-optical-sizing: auto; }
 .km-app ::selection { background: var(--km-brand); color: var(--km-on-brand); }
 .km-app button { cursor: pointer; }
@@ -243,16 +230,13 @@ html::-webkit-scrollbar-thumb:hover { background: var(--km-brand-mid); }
 .km-nums { font-variant-numeric: tabular-nums; }
 .km-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .km-kawung { background-image: var(--km-kawung); }
-
 .km-skip { position: fixed; top: 8px; left: 8px; z-index: 100; transform: translateY(-160%); background: var(--km-brand); color: var(--km-on-brand); padding: 10px 14px; border-radius: 10px; font-weight: 700; font-size: 13px; transition: transform 0.2s ease; }
 .km-skip:focus-visible { transform: translateY(0); }
-
 .km-scroll { scrollbar-width: thin; scrollbar-color: var(--km-line-strong) transparent; }
 .km-scroll::-webkit-scrollbar { width: 7px; height: 7px; }
 .km-scroll::-webkit-scrollbar-track { background: transparent; }
 .km-scroll::-webkit-scrollbar-thumb { background: var(--km-line-strong); border-radius: 8px; }
 .km-scroll::-webkit-scrollbar-thumb:hover { background: var(--km-brand-mid); }
-
 @keyframes kmFadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
 @keyframes kmFadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes kmDrawer { from { transform: translateX(56px); opacity: 0; } to { transform: none; opacity: 1; } }
@@ -265,13 +249,11 @@ html::-webkit-scrollbar-thumb:hover { background: var(--km-brand-mid); }
 .km-pop { animation: kmPop 0.3s ease both; }
 .km-dot { animation: kmDot 1.2s infinite ease-in-out; }
 .km-live { animation: kmPulse 2s infinite; }
-
 .km-range { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; border-radius: 999px; outline: none; background: var(--km-line); }
 .km-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--km-surface); border: 3px solid var(--km-thumb, var(--km-brand)); box-shadow: 0 1px 5px rgba(0,0,0,0.25); cursor: pointer; transition: transform 0.15s ease; }
 .km-range::-webkit-slider-thumb:hover { transform: scale(1.18); }
 .km-range::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: var(--km-surface); border: 3px solid var(--km-thumb, var(--km-brand)); box-shadow: 0 1px 5px rgba(0,0,0,0.25); cursor: pointer; }
 .km-range::-moz-range-track { height: 6px; border-radius: 999px; background: transparent; }
-
 .km-select { -webkit-appearance: none; appearance: none; background-color: var(--km-paper); color: var(--km-ink); border: 1px solid var(--km-line); border-radius: 0.75rem; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237C8171' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; outline: none; transition: border-color 0.2s ease, box-shadow 0.2s ease; }
 .km-select:focus { border-color: var(--km-brand-mid); box-shadow: 0 0 0 3px var(--km-focus-ring); }
 .km-select option { background: var(--km-surface); color: var(--km-ink); }
@@ -290,7 +272,6 @@ html::-webkit-scrollbar-thumb:hover { background: var(--km-brand-mid); }
 .km-bullet-dot { flex: none; width: 5px; height: 5px; border-radius: 99px; background: var(--km-brand-mid); margin-top: 8px; }
 .km-num { flex: none; font-weight: 700; color: var(--km-brand-mid); }
 .km-md-h { font-weight: 700; color: var(--km-ink); margin: 6px 0 2px; }
-
 @media (prefers-reduced-motion: reduce) {
   .km-anim, .km-fade, .km-drawer, .km-pop, .km-dot, .km-live { animation: none !important; }
   .km-app * { transition-duration: 0.01ms !important; }
@@ -298,13 +279,11 @@ html::-webkit-scrollbar-thumb:hover { background: var(--km-brand-mid); }
 `;
 
 /* ============================== HELPERS ============================== */
-
 const formatIDR = (n: number) => "Rp " + n.toLocaleString("id-ID");
 const formatNum = (n: number, digits?: number) =>
   n.toLocaleString("id-ID", digits === undefined ? undefined : { minimumFractionDigits: digits, maximumFractionDigits: digits });
 const shortName = (name: string) => name.split("|")[0].split("-")[0].trim();
-const initials = (name: string) => shortName(name).split(/\s+/).slice(0, 2).map((w) => w[0] || "").join("").toUpperCase();
-
+const initials = (name: string) => shortName(name).split(/\s+/).slice(0, 2).map((w) => w[0] || "").join(" ").toUpperCase();
 const genderLabel = (g: string) => {
   const lower = g.toLowerCase();
   if (lower.includes("putra") && lower.includes("putri")) return "Campuran";
@@ -312,21 +291,18 @@ const genderLabel = (g: string) => {
   if (lower.includes("putra")) return "Putra";
   return "Campuran";
 };
-
 const genderStyle = (g: string) =>
   g === "Putra"
     ? { bg: "var(--km-blue-soft)", fg: "var(--km-blue)" }
     : g === "Putri"
     ? { bg: "var(--km-rose-soft)", fg: "var(--km-rose)" }
     : { bg: "var(--km-violet-soft)", fg: "var(--km-violet)" };
-
 const escapeHtml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-
 const renderMarkdown = (text: string) => {
   const lines = escapeHtml(text).split(/\r?\n/);
   const html = lines.map((line) => {
     const bold = line.replace(/\*\*(.+?)\*\*/g, '<strong class="km-strong">$1</strong>');
-    const bullet = bold.match(/^\s*[-•]\s+(.*)$/);
+    const bullet = bold.match(/^\s*[-•]\s+(.+)$/);
     if (bullet) return `<div class="km-bullet"><span class="km-bullet-dot"></span><span>${bullet[1]}</span></div>`;
     const numbered = bold.match(/^\s*(\d+)[.)]\s+(.*)$/);
     if (numbered) return `<div class="km-bullet"><span class="km-num">${numbered[1]}.</span><span>${numbered[2]}</span></div>`;
@@ -336,31 +312,25 @@ const renderMarkdown = (text: string) => {
   const joined = html.replace(/\n/g, "<br/>").replace(/<br\/><div/g, "<div").replace(/<\/div><br\/>/g, "</div>");
   return { __html: joined };
 };
-
 const rangeFill = (value: number, min: number, max: number, color: string) =>
   ({ background: `linear-gradient(to right, ${color} ${((value - min) / (max - min)) * 100}%, var(--km-line) ${((value - min) / (max - min)) * 100}%)`, "--km-thumb": color } as CSSProperties);
-
 const pickByIds = (ids: number[]) => ids.map((id) => dorms.find((d) => d.id === id)).filter((d): d is Dorm => Boolean(d));
 const uniqueDorms = (list: Dorm[]) => Array.from(new Map(list.map((d) => [d.id, d])).values());
-
 const getCollectionDorms = (type: CollectionType) => {
   if (type === "best") return uniqueDorms([...pickByIds([3, 37, 9]), ...[...dorms].sort((a, b) => b.rating - a.rating)]).slice(0, 8);
   if (type === "closest") return uniqueDorms([...pickByIds([3, 1, 8]), ...[...dorms].sort((a, b) => a.distanceKm - b.distanceKm)]).slice(0, 8);
   return [...dorms].sort((a, b) => a.price - b.price).slice(0, 8);
 };
-
 const COLLECTION_DORMS: Record<CollectionType, Dorm[]> = {
   best: getCollectionDorms("best"),
   cheapest: getCollectionDorms("cheapest"),
   closest: getCollectionDorms("closest"),
 };
-
 const travelEstimates = (km: number) => ({
   walk: Math.max(1, Math.round((km / 4.5) * 60)),
   motor: Math.max(2, Math.round((km / 22) * 60 + 2)),
   car: Math.max(3, Math.round((km / 16) * 60 + 4)),
 });
-
 const recommendedMode = (note: string): "walk" | "motor" | "car" | null => {
   const n = note.toLowerCase();
   if (/jalan kaki|kaki|walk/.test(n)) return "walk";
@@ -370,7 +340,6 @@ const recommendedMode = (note: string): "walk" | "motor" | "car" | null => {
 };
 
 /* ============================== SHARED PIECES ============================== */
-
 function Logo({ size = 32 }: { size?: number }) {
   const rawId = useId();
   const gid = `km-logo-${rawId.replace(/:/g, "")}`;
@@ -572,14 +541,12 @@ function CollectionStrip({
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canLeft, setCanLeft] = useState(false);
   const [canRight, setCanRight] = useState(false);
-
   const updateScrollState = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
     setCanLeft(el.scrollLeft > 4);
     setCanRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
   }, []);
-
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -599,7 +566,6 @@ function CollectionStrip({
       window.clearTimeout(t);
     };
   }, [items, updateScrollState]);
-
   const scrollByCards = (dir: number) => {
     const el = scrollRef.current;
     if (!el) return;
@@ -607,7 +573,6 @@ function CollectionStrip({
     const amount = card ? card.offsetWidth + 12 : el.clientWidth * 0.8;
     el.scrollBy({ left: dir * amount, behavior: reduceMotion ? "auto" : "smooth" });
   };
-
   return (
     <section className="km-anim km-card rounded-2xl p-4 sm:p-5" style={{ animationDelay: `${delay}ms`, "--km-acc": accent.fg } as CSSProperties} aria-label={title}>
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
@@ -628,7 +593,6 @@ function CollectionStrip({
           </div>
         </div>
       </div>
-
       <div className="relative -mx-1">
         <div ref={scrollRef} role="region" aria-label={`Daftar ${title}`} tabIndex={0} className="km-scroll flex gap-3 overflow-x-auto snap-x snap-mandatory px-1 pb-2">
           {items.map((d) => (
@@ -658,7 +622,6 @@ function SwitchRow({ icon: Icon, label, desc, checked, onChange }: { icon: IconT
 }
 
 /* ============================== APP ============================== */
-
 export default function KostMatchApp() {
   const [step, setStep] = useState(0);
   const [detailFrom, setDetailFrom] = useState(2);
@@ -691,12 +654,15 @@ export default function KostMatchApp() {
   const [prefs, setPrefs] = useState<A11yPrefs>(DEFAULT_A11Y);
   const [prefsHydrated, setPrefsHydrated] = useState(false);
   const [systemDark, setSystemDark] = useState(false);
+  // FIX: tahun footer dibaca di useEffect (client-only), bukan saat render,
+  // agar prerender Next.js tidak menemui nilai tidak stabil `new Date()`.
+  const [year, setYear] = useState<number | null>(null);
   const dark = prefs.theme === "dark" || (prefs.theme === "system" && systemDark);
 
+  useEffect(() => { setYear(new Date().getFullYear()); }, []);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: prefs.reduceMotion ? "auto" : "smooth" }); }, [messages, isTyping, prefs.reduceMotion]);
   useEffect(() => { conciergeEndRef.current?.scrollIntoView({ behavior: prefs.reduceMotion ? "auto" : "smooth" }); }, [conciergeMessages, isConciergeTyping, prefs.reduceMotion]);
   useEffect(() => { window.scrollTo({ top: 0, behavior: "auto" }); }, [step]);
-
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem("kostmatch:saved:v1");
@@ -708,10 +674,8 @@ export default function KostMatchApp() {
     setHydrated(true);
     setPrefsHydrated(true);
   }, []);
-
   useEffect(() => { if (!hydrated) return; try { window.localStorage.setItem("kostmatch:saved:v1", JSON.stringify(savedIds)); } catch { /* storage unavailable */ } }, [savedIds, hydrated]);
   useEffect(() => { if (!prefsHydrated) return; try { window.localStorage.setItem("kostmatch:a11y:v1", JSON.stringify(prefs)); } catch { /* storage unavailable */ } }, [prefs, prefsHydrated]);
-
   useEffect(() => {
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     setSystemDark(mq.matches);
@@ -719,14 +683,12 @@ export default function KostMatchApp() {
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
   }, []);
-
   useEffect(() => {
     if (!drawer) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = prev; };
   }, [drawer]);
-
   useEffect(() => {
     if (!drawer) return;
     const node = drawerRef.current;
@@ -745,7 +707,6 @@ export default function KostMatchApp() {
     node.addEventListener("keydown", onKey);
     return () => node.removeEventListener("keydown", onKey);
   }, [drawer]);
-
   useEffect(() => {
     if (drawer !== "concierge") return;
     const t = window.setTimeout(() => conciergeInputRef.current?.focus(), 320);
@@ -758,9 +719,7 @@ export default function KostMatchApp() {
     setToasts((prev) => [...prev.slice(-2), { id, text, ...action }]);
     window.setTimeout(() => dismissToast(id), 4200);
   };
-
   const savedDorms = useMemo(() => savedIds.map((id) => dorms.find((d) => d.id === id)).filter((d): d is Dorm => Boolean(d)), [savedIds]);
-
   const toggleSave = (dorm: Dorm) => {
     if (savedIds.includes(dorm.id)) {
       const idx = savedIds.indexOf(dorm.id);
@@ -774,13 +733,11 @@ export default function KostMatchApp() {
       pushToast(`${shortName(dorm.name)} disimpan ke daftar simpanan`);
     }
   };
-
   const clearShortlist = () => {
     const prev = savedIds;
     setSavedIds([]);
     pushToast("Daftar simpanan dikosongkan", { actionLabel: "Urungkan", onAction: () => setSavedIds(prev) });
   };
-
   const handleInstantClick = (type: CollectionType) => {
     const sorted = [...dorms];
     let title = "";
@@ -792,7 +749,6 @@ export default function KostMatchApp() {
     setBrowseFilters(null);
     setStep(2);
   };
-
   const handleCustomSearch = () => {
     const filtered = dorms.filter((dorm) => {
       if (needAC && !dorm.hasAC) return false;
@@ -809,12 +765,10 @@ export default function KostMatchApp() {
     setSortBy("rating");
     setStep(2);
   };
-
   const resetFilters = () => {
     setMaxBudget(2000000); setGender("Semua"); setMaxDistance(5); setNeedAC(false); setElectricity("Semua"); setMinRating(1);
     pushToast("Filter diatur ulang ke default");
   };
-
   const sortedBrowsed = useMemo(() => {
     const arr = [...browsedDorms];
     if (sortBy === "priceAsc") arr.sort((a, b) => a.price - b.price);
@@ -822,9 +776,7 @@ export default function KostMatchApp() {
     else arr.sort((a, b) => b.rating - a.rating);
     return arr;
   }, [browsedDorms, sortBy]);
-
   const openDetail = (dorm: Dorm, from: number = 2) => { setSelectedDorm(dorm); setDetailFrom(from); setDrawer(null); setStep(4); };
-
   const requestAnalysis = async (dorm: Dorm, msgs: Message[]) => {
     setIsTyping(true);
     try {
@@ -836,7 +788,6 @@ export default function KostMatchApp() {
       setMessages((prev) => [...prev, { role: "assistant", content: error instanceof Error ? error.message : "Terjadi kesalahan.", error: true }]);
     } finally { setIsTyping(false); }
   };
-
   const openChat = (dorm: Dorm) => {
     setSelectedDorm(dorm);
     const initial: Message[] = [{ role: "user", content: "Halo, tolong analisis kost ini berdasarkan ulasan penghuni. Jawab dalam Bahasa Indonesia dengan struktur: 1) Ringkasan singkat, 2) Kelebihan utama, 3) Kekurangan/keluhan yang sering muncul, 4) Cocok untuk tipe penghuni seperti apa, 5) Pertanyaan penting yang perlu dikonfirmasi ke pemilik. Jika data tidak tersedia, katakan tidak diketahui dan jangan mengarang." }];
@@ -845,21 +796,17 @@ export default function KostMatchApp() {
     setStep(3);
     requestAnalysis(dorm, initial);
   };
-
   const sendChatText = (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || !selectedDorm || isTyping) return;
     const next: Message[] = [...messages, { role: "user", content: trimmed }];
     setMessages(next); setInput(""); requestAnalysis(selectedDorm, next);
   };
-
   const retryChat = () => { if (!selectedDorm || isTyping) return; const clean = messages.filter((m) => !m.error); setMessages(clean); requestAnalysis(selectedDorm, clean); };
-
   const openConcierge = useCallback(() => {
     setDrawer("concierge");
-    setConciergeMessages((prev) => prev.length ? prev : [{ role: "assistant", content: "Halo! Aku **Asisten AI KostMatch**. Sebutkan budget, preferensi gender (putra/putri/campuran), jarak maksimal, dan fasilitas wajib (AC, listrik termasuk, kamar mandi dalam, dll). Aku akan menyusun shortlist beserta alasan singkat, trade-off, dan hal yang perlu kamu tanyakan ke pemilik." }]);
+    setConciergeMessages((prev) => prev.length ? prev : [{ role: "assistant", content: "Halo! Aku Asisten AI KostMatch. Sebutkan budget, preferensi gender (putra/putri/campuran), jarak maksimal, dan fasilitas wajib (AC, listrik termasuk, kamar mandi dalam, dll). Aku akan menyusun shortlist beserta alasan singkat, trade-off, dan hal yang perlu kamu tanyakan ke pemilik." }]);
   }, []);
-
   const requestRecommend = async (msgs: Message[]) => {
     setIsConciergeTyping(true);
     try {
@@ -871,17 +818,14 @@ export default function KostMatchApp() {
       setConciergeMessages((prev) => [...prev, { role: "assistant", content: error instanceof Error ? error.message : "Terjadi kesalahan.", error: true }]);
     } finally { setIsConciergeTyping(false); }
   };
-
   const sendConciergeText = (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || isConciergeTyping) return;
     const next: Message[] = [...conciergeMessages, { role: "user", content: trimmed }];
     setConciergeMessages(next); setConciergeInput(""); requestRecommend(next);
   };
-
   const retryConcierge = () => { if (isConciergeTyping) return; const clean = conciergeMessages.filter((m) => !m.error); setConciergeMessages(clean); requestRecommend(clean); };
   const findDormsInText = (text: string) => { const cleanText = text.toLowerCase(); return dorms.filter((d) => { const coreName = d.name.split("|")[0].split("-")[0].trim().toLowerCase(); return cleanText.includes(coreName); }); };
-
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); if (step !== 0) openConcierge(); }
@@ -899,7 +843,6 @@ export default function KostMatchApp() {
     { name: "Universitas Katolik Parahyangan", img: "/images/universities/unpar.jpg", active: false },
     { name: "Universitas Pasundan", img: "/images/universities/unpas.jpg", active: false },
   ];
-
   const chatChips = [
     { label: "WiFi & belajar", prompt: "Bagaimana kualitas WiFi, apakah kost ini cocok untuk belajar?" },
     { label: "Air & kamar mandi", prompt: "Bagaimana kondisi pasokan air dan kamar mandinya?" },
@@ -907,9 +850,7 @@ export default function KostMatchApp() {
     { label: "Makanan sekitar", prompt: "Apa saja pilihan makanan di sekitar dan kira-kira berapa harganya?" },
     { label: "Sepadan dengan harga?", prompt: "Berdasarkan ulasan penghuni, apakah kost ini sepadan dengan harganya?" },
   ];
-
   const conciergeChips = ["Paling hemat di bawah Rp 1,5jt", "Kost tenang untuk belajar", "Kost putri dengan AC dekat kampus"];
-
   const rootClass = ["km-app", "min-h-screen", "antialiased", "flex", "flex-col", dark ? "km-dark" : "", prefs.highContrast ? "km-hc" : "", prefs.reduceMotion ? "km-reduce-motion" : "", prefs.readableFont ? "km-readable" : "", prefs.boldFocus ? "km-bold-focus" : "", prefs.reduceTransparency ? "km-reduce-transparency" : ""].filter(Boolean).join(" ");
   const travel = selectedDorm ? travelEstimates(selectedDorm.distanceKm) : null;
   const recMode = selectedDorm ? recommendedMode(selectedDorm.trafficNote) : null;
@@ -918,14 +859,12 @@ export default function KostMatchApp() {
     <div className={rootClass} style={{ colorScheme: dark ? "dark" : "light" }}>
       <style>{CSS}</style>
       <a href="#km-main" className="km-skip">Lewati ke konten</a>
-
       <header className="fixed top-0 inset-x-0 z-40 h-[var(--km-nav-h)] border-b border-[var(--km-line)] bg-[var(--km-nav-bg)] backdrop-blur-md">
         <div className="relative max-w-6xl mx-auto h-full px-3 sm:px-4 flex items-center justify-between gap-2">
           <button type="button" onClick={() => setStep(step === 0 ? 0 : 1)} className="flex items-center gap-2.5 active:scale-95 transition-transform shrink-0" aria-label="Beranda KostMatch">
             <Logo size={32} />
             <span className="km-display font-semibold text-[19px] tracking-tight hidden min-[380px]:inline">KostMatch</span>
           </button>
-
           {step > 0 && (
             <div className="hidden lg:flex absolute left-1/2 -translate-x-1/2 items-center gap-1.5 text-[12.5px] km-chip rounded-full pl-3 pr-1.5 py-1.5">
               <GraduationCap size={14} className="text-[var(--km-brand-mid)]" />
@@ -933,7 +872,6 @@ export default function KostMatchApp() {
               <button type="button" onClick={() => setStep(0)} className="ml-1 text-[11px] font-bold text-[var(--km-brand-mid)] hover:bg-[var(--km-brand-soft)] rounded-full px-2 py-0.5 transition-colors">Ganti</button>
             </div>
           )}
-
           <div className="flex items-center gap-1.5 sm:gap-2">
             {step > 0 && (
               <button type="button" onClick={() => setDrawer("saved")} aria-label={`Buka daftar simpanan, ${formatNum(savedIds.length)} disimpan`} className="km-btn-ghost relative w-10 h-10 rounded-xl grid place-items-center active:scale-95">
@@ -951,7 +889,6 @@ export default function KostMatchApp() {
           </div>
         </div>
       </header>
-
       <main id="km-main" className="pt-[var(--km-nav-h)] flex-grow flex flex-col">
         {step === 0 && (
           <section key="s0" className="km-anim flex-grow">
@@ -967,7 +904,6 @@ export default function KostMatchApp() {
                 </p>
               </div>
             </div>
-
             <div className="max-w-6xl mx-auto px-4 pb-16">
               <div className="flex items-stretch gap-3 sm:gap-4">
                 <div className="grid flex-1 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -997,7 +933,6 @@ export default function KostMatchApp() {
                     )
                   )}
                 </div>
-
                 {/* Decorative "more campuses coming" rail — intentionally non-interactive */}
                 <div
                   aria-hidden="true"
@@ -1013,7 +948,6 @@ export default function KostMatchApp() {
                   </div>
                 </div>
               </div>
-
               <div className="km-anim flex flex-wrap items-center justify-center gap-x-9 gap-y-3 mt-10 pt-8 border-t border-[var(--km-line)]" style={{ animationDelay: "600ms" }}>
                 {[{ icon: ShieldCheck, text: "Mudah digunakan" }, { icon: Star, text: "Tanpa iklan" }, { icon: Sparkles, text: "Analisis ulasan berbasis AI" }].map((item) => (
                   <span key={item.text} className="flex items-center gap-2 text-[12.5px] font-medium text-[var(--km-ink-soft)]"><item.icon size={14} className="text-[var(--km-brand-mid)]" />{item.text}</span>
@@ -1022,7 +956,6 @@ export default function KostMatchApp() {
             </div>
           </section>
         )}
-
         {step === 1 && (
           <section key="s1" className="flex-grow w-full">
             <div className="relative overflow-hidden">
@@ -1035,7 +968,6 @@ export default function KostMatchApp() {
                   </div>
                   <button type="button" onClick={() => setStep(0)} className="lg:hidden km-btn-ghost text-[12px] font-semibold flex items-center gap-1.5 px-3 py-1.5 rounded-lg"><ArrowLeft size={13} /> Ganti kampus</button>
                 </div>
-
                 <button type="button" onClick={openConcierge} className="km-anim km-card w-full group mt-6 rounded-2xl transition-all duration-300 active:scale-[0.997] hover:border-[var(--km-brand-mid)] text-left" style={{ animationDelay: "80ms" }}>
                   <div className="flex items-center gap-3.5 px-4 py-4">
                     <span className="w-10 h-10 rounded-xl grid place-items-center shrink-0 group-hover:scale-105 transition-transform bg-[var(--km-brand)] text-[var(--km-on-brand)]"><Sparkles size={16} /></span>
@@ -1048,14 +980,12 @@ export default function KostMatchApp() {
                 </button>
               </div>
             </div>
-
             <div className="max-w-6xl mx-auto w-full px-4 pb-14">
               <div className="km-anim km-card rounded-2xl p-4 sm:p-5 md:p-6 mt-4" style={{ animationDelay: "150ms" }}>
                 <div className="flex items-center justify-between mb-5">
                   <div className="flex items-center gap-2"><SlidersHorizontal size={14} className="text-[var(--km-brand-mid)]" /><span className="text-[11px] font-bold tracking-[0.14em] uppercase text-[var(--km-ink-soft)]">Filter manual</span></div>
                   <button type="button" onClick={resetFilters} className="flex items-center gap-1.5 text-[11.5px] font-semibold text-[var(--km-ink-faint)] hover:text-[var(--km-danger)] transition-colors"><RotateCcw size={11} /> Atur ulang</button>
                 </div>
-
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-4 items-end">
                   <div className="lg:col-span-3">
                     <label htmlFor="km-budget" className="block text-[11.5px] font-semibold mb-1.5 text-[var(--km-ink-soft)]">Budget maks / bulan</label>
@@ -1082,7 +1012,6 @@ export default function KostMatchApp() {
                     <button type="button" onClick={handleCustomSearch} className="km-btn-primary w-full h-[42px] font-semibold text-[13.5px] rounded-xl flex items-center justify-center gap-2 active:scale-[0.97]">Cari listing <ArrowRight size={14} /></button>
                   </div>
                 </div>
-
                 <div className="flex flex-wrap items-center gap-x-6 gap-y-3 mt-5 pt-4 border-t border-[var(--km-line)]">
                   <button type="button" role="switch" aria-checked={needAC} onClick={() => setNeedAC((v) => !v)} className="flex items-center gap-2.5 group">
                     <span className={`relative w-9 h-5 rounded-full transition-colors ${needAC ? "bg-[var(--km-brand)]" : "bg-[var(--km-line-strong)]"}`}><span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-[var(--km-surface)] shadow transition-transform ${needAC ? "translate-x-4" : ""}`} /></span>
@@ -1096,12 +1025,10 @@ export default function KostMatchApp() {
                   </div>
                 </div>
               </div>
-
               <div className="km-anim flex items-end justify-between mt-10 mb-4" style={{ animationDelay: "220ms" }}>
                 <h2 className="km-display text-[22px] font-semibold tracking-tight">Koleksi pilihan</h2>
                 <span className="text-[11.5px] font-medium hidden sm:block text-[var(--km-ink-faint)]">Geser atau lihat semua</span>
               </div>
-
               <div className="space-y-4">
                 <CollectionStrip icon={Star} title="Kualitas terbaik" desc="Rating penghuni tertinggi, terverifikasi." accent={{ fg: "var(--km-brand)", soft: "var(--km-brand-soft)" }} items={COLLECTION_DORMS.best} delay={280} onBrowse={() => handleInstantClick("best")} onOpenDorm={(d) => openDetail(d, 1)} savedIds={savedIds} onToggleSave={toggleSave} reduceMotion={prefs.reduceMotion} />
                 <CollectionStrip icon={Banknote} title="Paling hemat" desc="Sewa terendah, tanpa tebak-tebakan." accent={{ fg: "var(--km-amber)", soft: "var(--km-amber-soft)" }} items={COLLECTION_DORMS.cheapest} delay={340} onBrowse={() => handleInstantClick("cheapest")} onOpenDorm={(d) => openDetail(d, 1)} savedIds={savedIds} onToggleSave={toggleSave} reduceMotion={prefs.reduceMotion} />
@@ -1110,7 +1037,6 @@ export default function KostMatchApp() {
             </div>
           </section>
         )}
-
         {step === 2 && (
           <section key="s2" className="km-anim flex-grow max-w-6xl mx-auto w-full px-4 py-8">
             <div className="flex flex-wrap items-end justify-between gap-4 mb-5">
@@ -1128,7 +1054,6 @@ export default function KostMatchApp() {
                 </select>
               </label>
             </div>
-
             {browseFilters && (
               <div className="flex flex-wrap items-center gap-1.5 mb-6">
                 {[`≤ ${formatIDR(browseFilters.budget)}`, `≤ ${formatNum(browseFilters.distance, 1)} km`, `≥ ${formatNum(browseFilters.rating, 1)} ★`, browseFilters.gender !== "Semua" ? genderLabel(browseFilters.gender) : null, browseFilters.ac ? "Wajib AC" : null, browseFilters.electricity !== "Semua" ? (browseFilters.electricity === "Included" ? "Listrik termasuk" : "Listrik terpisah") : null].filter((x): x is string => Boolean(x)).map((chip) => (
@@ -1137,7 +1062,6 @@ export default function KostMatchApp() {
                 <button type="button" onClick={() => setStep(1)} className="text-[11.5px] font-bold px-2 py-1 transition-colors text-[var(--km-brand-mid)] hover:text-[var(--km-brand)]">Ubah filter</button>
               </div>
             )}
-
             {sortedBrowsed.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {sortedBrowsed.map((dorm, i) => <DormCard key={dorm.id} dorm={dorm} index={i} saved={savedIds.includes(dorm.id)} onOpen={() => openDetail(dorm, 2)} onToggleSave={() => toggleSave(dorm)} />)}
@@ -1152,11 +1076,9 @@ export default function KostMatchApp() {
             )}
           </section>
         )}
-
         {step === 4 && selectedDorm && travel && (
           <section key="s4" className="km-anim flex-grow max-w-5xl mx-auto w-full px-4 py-7">
             <button type="button" onClick={() => setStep(detailFrom)} className="flex items-center gap-1.5 text-[13px] font-semibold mb-5 transition-colors active:scale-95 text-[var(--km-ink-soft)] hover:text-[var(--km-ink)]"><ArrowLeft size={14} /> Kembali ke {detailFrom === 2 ? "hasil" : "pencarian"}</button>
-
             <div className="km-card rounded-2xl overflow-hidden">
               <div className="relative h-[280px] md:h-[360px]">
                 <SmartImage src={selectedDorm.imageUrl} alt={selectedDorm.name} label={selectedDorm.name} className="absolute inset-0 w-full h-full object-cover" />
@@ -1176,7 +1098,6 @@ export default function KostMatchApp() {
                   </div>
                 </div>
               </div>
-
               <div className="p-4 sm:p-5 md:p-7 grid grid-cols-1 lg:grid-cols-3 gap-7">
                 <div className="lg:col-span-2 space-y-7">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
@@ -1192,7 +1113,6 @@ export default function KostMatchApp() {
                       </div>
                     ))}
                   </div>
-
                   <div>
                     <h3 className="text-[11px] font-bold tracking-[0.14em] uppercase mb-3 text-[var(--km-ink-faint)]">Spesifikasi kamar</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -1204,7 +1124,6 @@ export default function KostMatchApp() {
                       ))}
                     </div>
                   </div>
-
                   <div>
                     <h3 className="text-[11px] font-bold tracking-[0.14em] uppercase mb-3 text-[var(--km-ink-faint)]">Akses ke kampus</h3>
                     <div className="grid grid-cols-3 gap-2.5">
@@ -1223,7 +1142,6 @@ export default function KostMatchApp() {
                       <div><h4 className="text-[12px] font-bold tracking-wide uppercase mb-1 text-[var(--km-amber)]">Catatan akses</h4><p className="text-[13px] leading-relaxed text-[var(--km-ink)]">{selectedDorm.trafficNote}</p></div>
                     </div>
                   </div>
-
                   <div>
                     <h3 className="text-[11px] font-bold tracking-[0.14em] uppercase mb-3 text-[var(--km-ink-faint)]">Fasilitas</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
@@ -1232,7 +1150,6 @@ export default function KostMatchApp() {
                       ))}
                     </div>
                   </div>
-
                   <div>
                     <div className="flex items-center justify-between mb-3">
                       <h3 className="text-[11px] font-bold tracking-[0.14em] uppercase text-[var(--km-ink-faint)]">Kata penghuni</h3>
@@ -1252,7 +1169,6 @@ export default function KostMatchApp() {
                     )}
                   </div>
                 </div>
-
                 <div>
                   <div className="rounded-2xl p-5 sticky top-[calc(var(--km-nav-h)+1rem)] border bg-[var(--km-paper)] border-[var(--km-line)]">
                     <h3 className="km-display text-[19px] font-semibold tracking-tight mb-1">Tertarik dengan kost ini?</h3>
@@ -1273,7 +1189,6 @@ export default function KostMatchApp() {
             </div>
           </section>
         )}
-
         {step === 3 && selectedDorm && (
           <section key="s3" className="km-anim flex-grow w-full max-w-3xl mx-auto px-4 h-[calc(100dvh-var(--km-nav-h))] flex flex-col">
             <div className="flex items-center gap-3 py-4 shrink-0">
@@ -1285,7 +1200,6 @@ export default function KostMatchApp() {
               </div>
               <button type="button" onClick={() => openChat(selectedDorm)} disabled={isTyping} title="Mulai ulang analisis" aria-label="Mulai ulang analisis" className="km-btn-ghost w-9 h-9 rounded-xl grid place-items-center active:scale-95 disabled:opacity-40 shrink-0"><RotateCcw size={14} /></button>
             </div>
-
             <div className="km-card flex-1 min-h-0 rounded-2xl overflow-hidden flex flex-col mb-4">
               <div className="km-scroll flex-1 overflow-y-auto p-4 space-y-4 bg-[var(--km-surface-alt)]">
                 {messages.map((msg, idx) => <ChatBubble key={idx} msg={msg} onRetry={msg.error ? retryChat : undefined} />)}
@@ -1308,18 +1222,15 @@ export default function KostMatchApp() {
           </section>
         )}
       </main>
-
       {step !== 3 && (
         <footer className="border-t border-[var(--km-line)] mt-auto">
           <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-[12px] text-[var(--km-ink-soft)]"><Logo size={20} /><span className="font-bold text-[var(--km-ink)]">KostMatch</span> · Kost mahasiswa, lebih mudah.</div>
-            <p className="text-[11px] km-nums text-[var(--km-ink-faint)]">Team Kamar 216 · © {new Date().getFullYear()}</p>
+            <p className="text-[11px] km-nums text-[var(--km-ink-faint)]">Team Kamar 216 · © {year ?? ""}</p>
           </div>
         </footer>
       )}
-
       {drawer && <div className="fixed inset-0 z-50 bg-[var(--km-overlay)] backdrop-blur-[2px] km-fade" onClick={() => setDrawer(null)} aria-hidden="true" />}
-
       {drawer === "concierge" && (
         <aside ref={drawerRef} role="dialog" aria-modal="true" aria-label="Asisten AI" className="km-drawer fixed right-0 top-0 bottom-0 z-50 w-full sm:w-[460px] border-l border-[var(--km-line)] shadow-2xl flex flex-col bg-[var(--km-paper)] pb-[env(safe-area-inset-bottom)]">
           <div className="px-5 py-4 border-b border-[var(--km-line)] bg-[var(--km-surface)] flex items-center justify-between shrink-0">
@@ -1350,7 +1261,6 @@ export default function KostMatchApp() {
           </div>
         </aside>
       )}
-
       {drawer === "saved" && (
         <aside ref={drawerRef} role="dialog" aria-modal="true" aria-label="Daftar simpanan" className="km-drawer fixed right-0 top-0 bottom-0 z-50 w-full sm:w-[420px] border-l border-[var(--km-line)] shadow-2xl flex flex-col bg-[var(--km-paper)] pb-[env(safe-area-inset-bottom)]">
           <div className="px-5 py-4 border-b border-[var(--km-line)] bg-[var(--km-surface)] flex items-center justify-between shrink-0">
@@ -1388,7 +1298,6 @@ export default function KostMatchApp() {
           )}
         </aside>
       )}
-
       {drawer === "a11y" && (
         <aside ref={drawerRef} role="dialog" aria-modal="true" aria-label="Aksesibilitas" className="km-drawer fixed right-0 top-0 bottom-0 z-50 w-full sm:w-[420px] border-l border-[var(--km-line)] shadow-2xl flex flex-col bg-[var(--km-paper)] pb-[env(safe-area-inset-bottom)]">
           <div className="px-5 py-4 border-b border-[var(--km-line)] bg-[var(--km-surface)] flex items-center justify-between shrink-0">
@@ -1428,7 +1337,6 @@ export default function KostMatchApp() {
           </div>
         </aside>
       )}
-
       <div role="status" aria-live="polite" className="fixed bottom-5 inset-x-0 z-[80] flex flex-col items-center gap-2 px-4 pointer-events-none pb-[env(safe-area-inset-bottom)]">
         {toasts.map((t) => (
           <div key={t.id} className="km-anim pointer-events-auto flex items-center gap-3 pl-4 pr-2 py-2 rounded-full shadow-[var(--km-shadow-hover)] text-[12.5px] font-medium max-w-full bg-[var(--km-ink)] text-[var(--km-paper)]">
