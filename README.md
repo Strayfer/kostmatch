@@ -36,7 +36,7 @@ Fitur utama:
 | 🔎 **Filter manual** | Budget, gender, jarak (slider), rating minimum, wajib AC, listrik termasuk/token |
 | ⭐ **Koleksi terkurasi** | Kualitas terbaik, paling hemat, terdekat ke kampus (strip horizontal) |
 | 🤖 **Analisis AI per kost** | AI merangkum kelebihan/kekurangan dari ulasan Google penghuni, dengan saran pertanyaan & tombol coba lagi |
-| ✨ **Asisten AI (Concierge)** | Rekomendasi kost dari bahasa natural ("kost putri di bawah 1,5jt ada AC"), pintasan `⌘/Ctrl + K` |
+| ✨ **Asisten AI** | Rekomendasi kost dari bahasa natural ("kost putri di bawah 1,5jt ada AC"), pintasan `⌘/Ctrl + K` |
 | ❤️ **Daftar simpanan** | Shortlist tersimpan di perangkat (localStorage) dengan aksi urungkan (undo) |
 | 📱 **Kontak langsung** | Tombol WhatsApp ke pemilik kost tanpa perantara |
 | 🚶 **Estimasi perjalanan** | Perkiraan waktu jalan kaki / motor / mobil + catatan lalu lintas |
@@ -75,7 +75,7 @@ kostmatch/
 │   ├── app/
 │   │   ├── api/
 │   │   │   ├── analyze/route.ts          # POST /api/analyze  — analisis ulasan kost
-│   │   │   └── recommend/route.ts        # POST /api/recommend — concierge rekomendasi
+│   │   │   └── recommend/route.ts        # POST /api/recommend — assistant rekomendasi
 │   │   ├── layout.tsx                    # Root layout
 │   │   ├── page.tsx                      # Seluruh UI aplikasi (Client Component)
 │   │   └── globals.css
@@ -110,7 +110,7 @@ Komponen reusable:
 | `ChatBubble` | Bubble chat + render markdown aman (escape HTML) + kartu kost terdeteksi + retry |
 | `TypingDots` | Indikator AI sedang mengetik |
 | `SwitchRow` | Toggle aksesibilitas (role="switch") |
-| Drawer `concierge` / `saved` / `a11y` | Panel samping: Asisten AI, daftar simpanan, pengaturan aksesibilitas (focus-trap + `Esc`) |
+| Drawer `assistant` / `saved` / `a11y` | Panel samping: Asisten AI, daftar simpanan, pengaturan aksesibilitas (focus-trap + `Esc`) |
 | Toast system | Notifikasi + aksi "Urungkan", `aria-live="polite"` |
 
 ### Aset
@@ -225,7 +225,7 @@ flowchart TD
     B -->|"Isi filter → Cari listing"| C["Step 2 · Hasil pencarian<br/>grid + sort + chips filter"]
     B -->|"Klik 'Lihat semua' koleksi"| C
     B -->|"Klik kartu di strip koleksi"| D
-    B -->|"Tanya Asisten AI / ⌘K"| E["Drawer Concierge<br/>rekomendasi via /api/recommend"]
+    B -->|"Tanya Asisten AI / ⌘K"| E["Drawer Assistant<br/>rekomendasi via /api/recommend"]
     C -->|"Klik kartu kost"| D["Step 4 · Detail kost<br/>spesifikasi · akses · ulasan"]
     E -->|"Klik kost hasil rekomendasi"| D
     D -->|"Analisis dengan AI"| F["Step 3 · Chat AI kost<br/>via /api/analyze"]
@@ -319,7 +319,7 @@ curl -X POST http://localhost:3000/api/analyze \
   -d '{"dorm":{"id":3,"name":"Kirana Kost Bandung","price":2400000,"hasAC":true,"distanceKm":0.08,"googleReviews":["bersih"]},"messages":[{"role":"user","content":"Kost ini bagus?"}]}'
 ```
 
-#### `POST /api/recommend` — Asisten AI (Concierge)
+#### `POST /api/recommend` — Asisten AI 
 
 Merekomendasikan kost dari **seluruh database** (konteks 50 listing disuntikkan ke system prompt: nama, harga, AC, jarak, gender, rating). Aturan: pilih **tepat satu** kost bila pengguna minta "terbaik"; maksimal 1–2 untuk permintaan umum; jawaban < 45 kata.
 
